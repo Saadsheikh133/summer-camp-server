@@ -26,6 +26,8 @@ async function run() {
     await client.connect();
 
     const sportsCollection = client.db("sportsDB").collection("classes");
+    const allClassesCollection = client.db("sportsDB").collection("allClasses");
+    const selectedClassCollection = client.db("sportsDB").collection("selectedClass");
     const instructorsCollection = client
       .db("sportsDB")
       .collection("instructor");
@@ -44,6 +46,19 @@ async function run() {
         .toArray();
       res.send(result);
     });
+
+    // allClasses related api
+    app.get('/allClasses', async (req, res) => {
+      const result = await allClassesCollection.find().toArray();
+      res.send(result);
+    });
+
+
+    app.post('/addToCarts', async (req, res) => {
+      const classes = req.body;
+      const result = await selectedClassCollection.insertOne(classes);
+      res.send(result);
+    })
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
