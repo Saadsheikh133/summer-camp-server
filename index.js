@@ -54,6 +54,11 @@ async function run() {
     });
 
 
+    app.get("/selectedClass", async (req, res) => {
+      const result = await selectedClassCollection.find().toArray();
+      res.send(result)
+    })
+
     app.post('/addToCarts', async (req, res) => {
       const classes = req.body;
       const result = await selectedClassCollection.insertOne(classes);
