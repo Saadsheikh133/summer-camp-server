@@ -87,6 +87,13 @@ async function run() {
       res.send(result);
     });
 
+    app.post('/createClasses', async (req, res) => {
+      const addClass = req.body;
+      const result = await allClassesCollection.insertOne(addClass);
+      res.send(result);
+    })
+
+    // selected class related api
     app.get("/selectedClass", async (req, res) => {
       const result = await selectedClassCollection.find().toArray();
       res.send(result);
@@ -113,6 +120,7 @@ async function run() {
 
     app.post("/addUsers", async (req, res) => {
       const user = req.body;
+      console.log(user)
       const query = { email: user.email };
       const existingUser = await usersCollection.findOne(query);
       if (existingUser) {
@@ -123,7 +131,18 @@ async function run() {
     });
 
 
-     
+     app.patch("/users/admin/:id", async (req, res) => {
+       const id = req.params.id;
+       const filter = { _id: new ObjectId(id) };
+       const updateDoc = {
+         $set: {
+           role: "admin",
+         },
+       };
+       const result = await usersCollection.updateOne(filter, updateDoc);
+       res.send(result);
+     });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
