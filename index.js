@@ -4,7 +4,7 @@ const app = express();
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
 const port = process.env.PORT || 5000;
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 // middleware
 app.use(cors());
@@ -54,6 +54,14 @@ async function run() {
     const instructorsCollection = client
       .db("sportsDB")
       .collection("instructor");
+    
+      app.post("/jwt", (req, res) => {
+        const user = req.body;
+        const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+          expiresIn: "1d",
+        });
+        res.send(token);
+      });
 
     // sports class related api
     app.get("/classes", async (req, res) => {
@@ -90,6 +98,19 @@ async function run() {
       res.send(result);
     });
 
+    app.delete('/removeClasses/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await selectedClassCollection.deleteOne(query);
+      res.send(result);
+    })
+
+    // users related api
+    app.get('/findUsers', async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    })
+
     app.post("/addUsers", async (req, res) => {
       const user = req.body;
       const query = { email: user.email };
@@ -100,6 +121,9 @@ async function run() {
       const result = await usersCollection.insertOne(user);
       res.send(result);
     });
+
+
+     
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
