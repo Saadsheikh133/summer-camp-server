@@ -109,8 +109,14 @@ async function run() {
     });
 
     // allClasses related api
-    app.get("/allClasses", async (req, res) => {
+    app.get('/getClasses', async (req, res) => {
       const result = await allClassesCollection.find().toArray();
+      res.send(result);
+    })
+
+    app.get("/allClasses", async (req, res) => {
+      const query = {status: 'approved'}
+      const result = await allClassesCollection.find(query).toArray();
       res.send(result);
     });
 
@@ -168,6 +174,13 @@ async function run() {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
+
+    app.get('/userRole/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      res.send({role:user.role})
+    })
 
     app.post("/addUsers", async (req, res) => {
       const user = req.body;
