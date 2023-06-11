@@ -120,6 +120,20 @@ async function run() {
       res.send(result);
     });
 
+    app.patch('/approveClass/:id', async (req, res) => {
+      const id = req.params.id;
+      const body = req.body;
+      console.log(id, body)
+      const filter = { _id: new ObjectId(id) }
+      const updatedDoc = {
+        $set: {
+          status: body.status,
+        },
+      };
+      const result = await allClassesCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    })
+
     // selected class related api
     app.get("/selectedClass", verifyJWT, async (req, res) => {
       const email = req.query.email;
