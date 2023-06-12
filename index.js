@@ -48,6 +48,7 @@ async function run() {
 
     const sportsCollection = client.db("sportsDB").collection("classes");
     const allClassesCollection = client.db("sportsDB").collection("allClasses");
+    const enrolledCollection = client.db("sportsDB").collection("enrolled");
     const selectedClassCollection = client
       .db("sportsDB")
       .collection("selectedClass");
@@ -248,6 +249,17 @@ async function run() {
         clientSecret: paymentIntent.client_secret
       })
     })
+
+    // enrolled related api
+    app.post('/enrolled', verifyJWT, async (req, res) => {
+      const payment = req.body;
+      const id = payment._id;
+      const query = { _id: new ObjectId(id) };
+      const result = await enrolledCollection.insertOne(payment);
+      const deleteResult = await selectedClassCollection.deleteOne(query);
+      res.send({result, deleteResult})
+    })
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
