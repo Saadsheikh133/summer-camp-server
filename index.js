@@ -3,6 +3,7 @@ const cors = require("cors");
 const app = express();
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
+const stripe = require("stripe")(process.env.STIPE_SECRET_KEY);
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
@@ -126,6 +127,20 @@ async function run() {
       res.send(result);
     });
 
+    app.put("/sendFeedback/:id", async (req, res) => {
+      const id = req.params.id;
+      const body = req.body;
+      const filter = { _id: new ObjectId(id) }
+      const options = { upsert: true };
+      const updatedDoc = {
+        $set: {
+          feedback: body.feedback,
+        },
+      };
+      const result = await allClassesCollection.updateOne(filter, updatedDoc, options);
+      res.send(result);
+    });
+
     app.patch('/approveClass/:id', async (req, res) => {
       const id = req.params.id;
       const body = req.body;
@@ -218,6 +233,21 @@ async function run() {
       const result = await usersCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
+
+
+    // payment intent
+    app.post('/create_payment_intent', verifyJWT, async (req, res) => {
+      const { price } = req.body;
+      const amount = price * 100;
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret
+      })
+    })
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
