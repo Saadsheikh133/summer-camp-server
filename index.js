@@ -13,17 +13,14 @@ app.use(express.json());
 
 const verifyJWT = (req, res, next) => {
   const authorization = req.headers.authorization;
-  console.log('authorization',authorization)
   if (!authorization) {
     return res
       .status(401)
       .send({ error: true, message: "unauthorized access!!!" });
   }
   const token = authorization.split(" ")[1];
-  console.log('token',token)
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     if (err) {
-      console.log(err)
       return res
         .status(401)
         .send({ error: true, message: "unauthorized access!!!" });
@@ -299,9 +296,6 @@ async function run() {
       }
       res.send(result);
     });
-    // const result = await classCollection.updateOne(query, {
-    //   $inc: { enrolledStudents: 1, seats: -1 },
-    // });
 
 
     app.get('/getEnrolledClasses',verifyJWT, async (req, res) => {
