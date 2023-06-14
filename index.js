@@ -13,14 +13,17 @@ app.use(express.json());
 
 const verifyJWT = (req, res, next) => {
   const authorization = req.headers.authorization;
+  console.log('authorization',authorization)
   if (!authorization) {
     return res
       .status(401)
       .send({ error: true, message: "unauthorized access!!!" });
   }
   const token = authorization.split(" ")[1];
+  console.log('token',token)
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     if (err) {
+      console.log(err)
       return res
         .status(401)
         .send({ error: true, message: "unauthorized access!!!" });
@@ -65,6 +68,29 @@ async function run() {
       res.send(token);
     });
 
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      if (user?.role !== "admin") {
+        return res
+          .status(403)
+          .send({ error: true, message: "forbidden access!" });
+      }
+      next();
+    };
+    const verifyInstructor = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      if (user?.role !== "instructor") {
+        return res
+          .status(403)
+          .send({ error: true, message: "forbidden access!" });
+      }
+      next();
+    };
+
     // sports class related api
     app.get("/classes", async (req, res) => {
       const result = await sportsCollection
@@ -83,14 +109,14 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/getClasses/:email", async (req, res) => {
+    app.get("/getClasses/:email", verifyJWT, verifyInstructor, async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
       const result = await allClassesCollection.find(query).toArray();
       res.send(result);
     });
 
-    app.put("/updateClasses/:id", async (req, res) => {
+    app.put("/updateClasses/:id", verifyJWT, verifyInstructor, async (req, res) => {
       const id = req.params.id;
       const body = req.body;
       const filter = { _id: new ObjectId(id) };
@@ -111,42 +137,44 @@ async function run() {
     });
 
     // allClasses related api
-    app.get('/getClasses', async (req, res) => {
+    app.get("/getClasses", verifyJWT, async (req, res) => {
       const result = await allClassesCollection.find().toArray();
       res.send(result);
-    })
+    });
 
     app.get("/allClasses", async (req, res) => {
-      const query = {status: 'approved'}
+      const query = { status: "approved" };
       const result = await allClassesCollection.find(query).toArray();
       res.send(result);
     });
 
-    app.post("/createClasses", async (req, res) => {
+    app.post("/createClasses", verifyJWT, verifyInstructor, async (req, res) => {
       const addClass = req.body;
       const result = await allClassesCollection.insertOne(addClass);
       res.send(result);
     });
 
-    app.put("/sendFeedback/:id", async (req, res) => {
+    app.put("/sendFeedback/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const body = req.body;
-      const filter = { _id: new ObjectId(id) }
-      const options = { upsert: true };
+      console.log(body.feedback)
+      const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
         $set: {
           feedback: body.feedback,
         },
       };
-      const result = await allClassesCollection.updateOne(filter, updatedDoc, options);
+      const result = await allClassesCollection.updateOne(
+        filter,
+        updatedDoc
+      );
       res.send(result);
     });
 
-    app.patch('/approveClass/:id', async (req, res) => {
+    app.patch("/approveClass/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const body = req.body;
-      console.log(id, body)
-      const filter = { _id: new ObjectId(id) }
+      const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
         $set: {
           status: body.status,
@@ -154,7 +182,7 @@ async function run() {
       };
       const result = await allClassesCollection.updateOne(filter, updatedDoc);
       res.send(result);
-    })
+    });
 
     // selected class related api
     app.get("/selectedClass", verifyJWT, async (req, res) => {
@@ -164,21 +192,21 @@ async function run() {
       }
       if (email !== req.decoded.email) {
         return res
-             .status(403)
-             .send({ error: true, message: "forbidden access!" });
+          .status(403)
+          .send({ error: true, message: "forbidden access!" });
       }
-      const query = {email: email}
+      const query = { email: email };
       const result = await selectedClassCollection.find(query).toArray();
       res.send(result);
     });
 
-    app.post("/addToCarts", async (req, res) => {
+    app.post("/addToCarts", verifyJWT, async (req, res) => {
       const classes = req.body;
       const result = await selectedClassCollection.insertOne(classes);
       res.send(result);
     });
 
-    app.delete("/removeClasses/:id", async (req, res) => {
+    app.delete("/removeClasses/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await selectedClassCollection.deleteOne(query);
@@ -186,19 +214,19 @@ async function run() {
     });
 
     // users related api
-    app.get("/findUsers", async (req, res) => {
+    app.get("/findUsers", verifyJWT, verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
 
-    app.get('/userRole/:email', async (req, res) => {
+    app.get("/userRole/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
       const user = await usersCollection.findOne(query);
-      res.send({role:user.role})
-    })
+      res.send({ role: user?.role });
+    });
 
-    app.post("/addUsers", async (req, res) => {
+    app.post("/addUsers", verifyJWT, async (req, res) => {
       const user = req.body;
       const query = { email: user.email };
       const existingUser = await usersCollection.findOne(query);
@@ -210,7 +238,7 @@ async function run() {
     });
 
     // make user role admin
-    app.patch("/users/admin/:id", async (req, res) => {
+    app.patch("/users/admin/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
@@ -223,7 +251,7 @@ async function run() {
     });
 
     // make user role instructor
-    app.patch("/users/instructor/:id", async (req, res) => {
+    app.patch("/users/instructor/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
@@ -235,31 +263,61 @@ async function run() {
       res.send(result);
     });
 
-
     // payment intent
-    app.post('/create_payment_intent', verifyJWT, async (req, res) => {
+    app.post("/create_payment_intent", verifyJWT, async (req, res) => {
       const { price } = req.body;
       const amount = price * 100;
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
-        currency: 'usd',
-        payment_method_types: ['card']
+        currency: "usd",
+        payment_method_types: ["card"],
       });
       res.send({
-        clientSecret: paymentIntent.client_secret
-      })
-    })
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
 
     // enrolled related api
-    app.post('/enrolled', verifyJWT, async (req, res) => {
+    app.post("/enrolled", verifyJWT, async (req, res) => {
       const payment = req.body;
-      const id = payment._id;
-      const query = { _id: new ObjectId(id) };
+      const { itemId, _id } = payment;
+      console.log(_id, itemId)
+      const query = { _id: new ObjectId(_id) };
       const result = await enrolledCollection.insertOne(payment);
-      const deleteResult = await selectedClassCollection.deleteOne(query);
-      res.send({result, deleteResult})
-    })
+      if (result.insertedId) {
+        const deleteResult = await selectedClassCollection.deleteOne(query);
+       const increment = await allClassesCollection.updateOne(
+          { itemId },
+          {
+            $inc: {
+              enroll_count: 1,
+              available_set: -1,
+            },
+          }
+        );
+        console.log(increment)
+      }
+      res.send(result);
+    });
+    // const result = await classCollection.updateOne(query, {
+    //   $inc: { enrolledStudents: 1, seats: -1 },
+    // });
 
+
+    app.get('/getEnrolledClasses',verifyJWT, async (req, res) => {
+      const email = req.query.email;
+       if (!email) {
+         res.render([]);
+       }
+       if (email !== req.decoded.email) {
+         return res
+           .status(403)
+           .send({ error: true, message: "forbidden access!" });
+       }
+      const query = { email: email }
+      const result = await enrolledCollection.find(query).sort({date: -1}).toArray();
+      res.send(result);
+    })
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
